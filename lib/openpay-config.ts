@@ -18,5 +18,5 @@ export function getOpenpayConfig(): OpenpayConfig {
 
 export function hasOpenpayServerCredentials() {
   const config = getOpenpayConfig();
-  return Boolean(config.merchantId && config.privateKey);
+  return Boolean(config.merchantId && config.privateKey && config.publicKey);
 }

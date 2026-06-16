@@ -52,6 +52,8 @@ export function CheckoutView() {
   const { detailedItems, subtotal, clearCart } = useCart();
   const [sent, setSent] = useState(false);
   const [paymentError, setPaymentError] = useState("");
+  const [paymentNotice, setPaymentNotice] = useState("");
+  const [isSubmitting, setIsSubmitting] = useState(false);
   const [card, setCard] = useState({
     number: "",
     holder: "",
@@ -65,6 +67,7 @@ export function CheckoutView() {
 
   function updateCardField(field: keyof typeof card, value: string) {
     setPaymentError("");
+    setPaymentNotice("");
     setCard((current) => ({
       ...current,
       [field]:
@@ -99,9 +102,10 @@ export function CheckoutView() {
     return "";
   }
 
-  function handlePayment(event: FormEvent<HTMLFormElement>) {
+  async function handlePayment(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     setPaymentError("");
+    setPaymentNotice("");
 
     const validationMessage = validateCard();
     if (validationMessage) {
@@ -109,7 +113,29 @@ export function CheckoutView() {
       return;
     }
 
-    // TODO: Tokenizar tarjeta con Openpay.js y enviar token/deviceSessionId a /api/openpay/create-charge.
+    setIsSubmitting(true);
+    const fallbackMessage =
+      "Pago pendiente de integración. Un asesor se comunicará contigo para finalizar la compra.";
+
+    try {
+      const response = await fetch("/api/openpay/status", {
+        method: "GET",
+        headers: { Accept: "application/json" }
+      });
+      const data = (await response.json()) as { enabled?: boolean };
+
+      if (!data.enabled) {
+        setPaymentNotice(fallbackMessage);
+        return;
+      }
+    } catch {
+      setPaymentNotice(fallbackMessage);
+      return;
+    } finally {
+      setIsSubmitting(false);
+    }
+
+    // TODO: Conectar tokenizacion Openpay y enviar token/deviceSessionId a /api/openpay/create-charge.
     clearCart();
     setSent(true);
   }
@@ -335,6 +361,11 @@ export function CheckoutView() {
                 {paymentError}
               </p>
             )}
+            {paymentNotice && (
+              <p className="mt-5 rounded-lg border border-black/10 bg-camhe-light px-4 py-3 text-sm font-bold leading-6 text-camhe-graphite">
+                {paymentNotice}
+              </p>
+            )}
 
             <div className="mt-6 grid gap-3 border-t border-black/10 pt-5 text-sm leading-6 text-camhe-steel">
               <p className="flex gap-3">
@@ -376,8 +407,11 @@ export function CheckoutView() {
           </label>
 
           <div>
-            <button className="focus-ring inline-flex w-full justify-center rounded-xl bg-camhe-red px-6 py-4 text-sm font-black uppercase tracking-[0.1em] text-white shadow-[0_14px_32px_rgba(215,25,32,0.22)] transition hover:bg-camhe-black">
-              Pagar con Openpay
+            <button
+              className="focus-ring inline-flex w-full justify-center rounded-xl bg-camhe-red px-6 py-4 text-sm font-black uppercase tracking-[0.1em] text-white shadow-[0_14px_32px_rgba(215,25,32,0.22)] transition hover:bg-camhe-black disabled:cursor-not-allowed disabled:opacity-70"
+              disabled={isSubmitting}
+            >
+              {isSubmitting ? "Validando pago" : "Pagar con Openpay"}
             </button>
             <p className="mt-3 text-center text-xs leading-5 text-camhe-steel">
               Transaccion protegida con sistema antifraude Openpay.

@@ -30,6 +30,10 @@ export default function PrivacidadPage() {
           El cliente puede solicitar acceso, correccion, cancelacion u oposicion
           sobre sus datos escribiendo a ventas@camheiluminacion.com.
         </p>
+        <p>
+          Domicilio fiscal: Av. Cvln Dr Alt 164, Independiente Poniente, 44290,
+          Guadalajara, Jalisco.
+        </p>
       </div>
     </section>
   );

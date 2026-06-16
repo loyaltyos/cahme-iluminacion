@@ -39,6 +39,10 @@ export default function TerminosPage() {
           acuerdo con sus especificaciones tecnicas, normatividad aplicable y por
           personal calificado cuando corresponda.
         </p>
+        <p>
+          Domicilio fiscal de CAMHE Iluminacion: Av. Cvln Dr Alt 164,
+          Independiente Poniente, 44290, Guadalajara, Jalisco.
+        </p>
       </div>
     </section>
   );

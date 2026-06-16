@@ -29,7 +29,16 @@ export const metadata: Metadata = {
     url: "https://camheiluminacion.com",
     siteName: "CAMHE Iluminación",
     locale: "es_MX",
-    type: "website"
+    type: "website",
+    phoneNumbers: ["+52 55 4517 4522"],
+    images: [
+      {
+        url: "/logo-camhe.jpeg",
+        width: 1200,
+        height: 630,
+        alt: "CAMHE Iluminación"
+      }
+    ]
   },
   robots: {
     index: true,

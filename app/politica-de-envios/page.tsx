@@ -32,6 +32,10 @@ export default function PoliticaEnviosPage() {
           de la entrega con evidencia fotografica para iniciar la revision
           correspondiente.
         </p>
+        <p>
+          Domicilio fiscal: Av. Cvln Dr Alt 164, Independiente Poniente, 44290,
+          Guadalajara, Jalisco.
+        </p>
       </div>
     </section>
   );

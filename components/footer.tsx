@@ -37,8 +37,8 @@ export function Footer() {
           <h2 className="text-sm font-black uppercase tracking-[0.16em]">Contacto</h2>
           <div className="mt-4 grid gap-3 text-sm text-white/72">
             <span>ventas@camheiluminacion.com</span>
-            <span>WhatsApp: +52 999 000 0000</span>
-            <span>Mexico</span>
+            <span>WhatsApp: +52 55 4517 4522</span>
+            <span>Av. Cvln Dr Alt 164, Independiente Poniente, 44290, Guadalajara, Jalisco</span>
           </div>
           <div className="mt-6 grid gap-2 text-xs font-bold uppercase tracking-[0.12em] text-white/50">
             <Link href="/terminos-y-condiciones">Terminos y Condiciones</Link>

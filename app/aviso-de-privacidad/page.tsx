@@ -28,7 +28,7 @@ export default function PrivacidadPage() {
         </p>
         <p>
           El cliente puede solicitar acceso, correccion, cancelacion u oposicion
-          sobre sus datos escribiendo a ventas@camheiluminacion.com.
+          sobre sus datos escribiendo a info@camheiluminacion.com.
         </p>
         <p>
           Domicilio fiscal: Av. Cvln Dr Alt 164, Independiente Poniente, 44290,

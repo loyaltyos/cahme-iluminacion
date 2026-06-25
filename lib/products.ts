@@ -3,7 +3,8 @@ export type Category =
   | "Iluminacion Industrial"
   | "Energia Solar"
   | "Iluminacion Residencial"
-  | "Accesorios Electricos";
+  | "Accesorios Electricos"
+  | "Prueba de pago";
 
 export type Product = {
   id: string;
@@ -20,7 +21,8 @@ export const categories: Category[] = [
   "Iluminacion Industrial",
   "Energia Solar",
   "Iluminacion Residencial",
-  "Accesorios Electricos"
+  "Accesorios Electricos",
+  "Prueba de pago"
 ];
 
 export const categoryLabels: Record<Category, string> = {
@@ -28,7 +30,8 @@ export const categoryLabels: Record<Category, string> = {
   "Iluminacion Industrial": "Iluminacion Industrial",
   "Energia Solar": "Energia Solar",
   "Iluminacion Residencial": "Iluminacion Residencial",
-  "Accesorios Electricos": "Accesorios Electricos"
+  "Accesorios Electricos": "Accesorios Electricos",
+  "Prueba de pago": "Prueba de pago"
 };
 
 const unsplashImages: Record<string, string> = {
@@ -109,6 +112,15 @@ const categoryImages = {
 };
 
 export const products: Product[] = [
+  {
+    id: "test-openpay-100",
+    name: "Compra mínima CAMHE Iluminación",
+    category: "Prueba de pago",
+    description: "Producto de bajo monto para validación de pagos Openpay.",
+    price: 100,
+    image: categoryImages.residential[0],
+    specs: ["$100 MXN", "Openpay", "Validación"]
+  },
   {
     id: "ap-01",
     name: "Luminaria Vial LED Titan 120W",

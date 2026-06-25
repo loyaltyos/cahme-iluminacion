@@ -2,6 +2,7 @@ export type OpenpayConfig = {
   merchantId: string;
   privateKey: string;
   publicKey: string;
+  production: boolean;
   siteUrl: string;
 };
 
@@ -10,6 +11,7 @@ export function getOpenpayConfig(): OpenpayConfig {
     merchantId: process.env.OPENPAY_MERCHANT_ID ?? "",
     privateKey: process.env.OPENPAY_PRIVATE_KEY ?? "",
     publicKey: process.env.NEXT_PUBLIC_OPENPAY_PUBLIC_KEY ?? "",
+    production: process.env.OPENPAY_PRODUCTION === "true",
     siteUrl: process.env.NEXT_PUBLIC_SITE_URL ?? "http://localhost:3000"
   };
 }

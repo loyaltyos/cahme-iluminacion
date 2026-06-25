@@ -55,18 +55,20 @@ export class OpenpayChargeError extends Error {
   }
 }
 
-const openpayBaseUrl = "https://sandbox-api.openpay.mx";
-
 function getBasicAuth(privateKey: string) {
   return Buffer.from(`${privateKey}:`).toString("base64");
 }
 
+function getOpenpayBaseUrl(production: boolean) {
+  return production ? "https://api.openpay.mx" : "https://sandbox-api.openpay.mx";
+}
+
 export async function createOpenpayCharge(
   payload: OpenpayChargePayload,
-  config: { merchantId: string; privateKey: string }
+  config: { merchantId: string; privateKey: string; production: boolean }
 ) {
   const response = await fetch(
-    `${openpayBaseUrl}/v1/${config.merchantId}/charges`,
+    `${getOpenpayBaseUrl(config.production)}/v1/${config.merchantId}/charges`,
     {
       method: "POST",
       headers: {
@@ -111,9 +113,9 @@ export async function createOpenpayCharge(
 
 export async function getOpenpayCharge(
   transactionId: string,
-  config: { merchantId: string; privateKey: string }
+  config: { merchantId: string; privateKey: string; production: boolean }
 ) {
-  const response = await fetch(`${openpayBaseUrl}/v1/${config.merchantId}/charges/${transactionId}`, {
+  const response = await fetch(`${getOpenpayBaseUrl(config.production)}/v1/${config.merchantId}/charges/${transactionId}`, {
     method: "GET",
     headers: {
       Authorization: `Basic ${getBasicAuth(config.privateKey)}`,

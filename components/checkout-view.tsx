@@ -74,6 +74,7 @@ declare global {
 
 const openpayMerchantId = process.env.NEXT_PUBLIC_OPENPAY_MERCHANT_ID ?? "";
 const openpayPublicKey = process.env.NEXT_PUBLIC_OPENPAY_PUBLIC_KEY ?? "";
+const openpayProduction = process.env.NEXT_PUBLIC_OPENPAY_PRODUCTION === "true";
 const checkoutFormId = "camhe-openpay-payment-form";
 const deviceSessionFieldName = "device_session_id";
 const pendingChargeStorageKey = "camhe-openpay-pending-charge";
@@ -231,13 +232,13 @@ function configureOpenpay() {
   }
 
   try {
-    window.OpenPay.setSandboxMode(true);
-    if (window.OpenPay.getSandboxMode && window.OpenPay.getSandboxMode() !== true) {
-      throw new Error("OpenPay.getSandboxMode no regreso true.");
+    window.OpenPay.setSandboxMode(!openpayProduction);
+    if (window.OpenPay.getSandboxMode && window.OpenPay.getSandboxMode() !== !openpayProduction) {
+      throw new Error("OpenPay.getSandboxMode no regreso el modo esperado.");
     }
     console.log("OpenPay.setSandboxMode OK");
   } catch (error) {
-    throw new OpenpayCheckoutError("Fallo sandbox: OpenPay.setSandboxMode(true) no pudo inicializarse.", {
+    throw new OpenpayCheckoutError("Fallo sandbox: OpenPay.setSandboxMode no pudo inicializarse.", {
       cause: error
     });
   }

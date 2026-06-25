@@ -275,7 +275,6 @@ export function CheckoutView() {
   const [paymentError, setPaymentError] = useState("");
   const [paymentNotice, setPaymentNotice] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [openpayReady, setOpenpayReady] = useState(false);
   const [card, setCard] = useState({
     number: "",
     holder: "",
@@ -293,7 +292,6 @@ export function CheckoutView() {
     async function initializeOpenpay() {
       await loadOpenpay();
       configureOpenpay();
-      if (mounted) setOpenpayReady(true);
     }
 
     initializeOpenpay().catch((error) => {
@@ -414,7 +412,6 @@ export function CheckoutView() {
         const formData = new FormData(event.currentTarget);
         await loadOpenpay();
         configureOpenpay();
-        setOpenpayReady(true);
         const deviceSessionId = createDeviceSessionId();
         const tokenId = await createCardToken();
 
@@ -748,9 +745,9 @@ export function CheckoutView() {
           <div>
             <button
               className="focus-ring inline-flex w-full justify-center rounded-xl bg-camhe-red px-6 py-4 text-sm font-black uppercase tracking-[0.1em] text-white shadow-[0_14px_32px_rgba(215,25,32,0.22)] transition hover:bg-camhe-black disabled:cursor-not-allowed disabled:opacity-70"
-              disabled={isSubmitting || !openpayReady}
+              disabled={isSubmitting}
             >
-              {!openpayReady ? "Preparando pago" : isSubmitting ? "Validando pago" : "Pagar con Openpay"}
+              {isSubmitting ? "Validando pago" : "Pagar con Openpay"}
             </button>
             <p className="mt-3 text-center text-xs leading-5 text-camhe-steel">
               Transaccion protegida con sistema antifraude Openpay.

@@ -3,7 +3,7 @@
 import Image from "next/image";
 import { FormEvent, useEffect, useMemo, useState } from "react";
 import Link from "next/link";
-import { Check, CreditCard, ShieldCheck } from "lucide-react";
+import { Check, CreditCard } from "lucide-react";
 import { useCart } from "@/components/cart-provider";
 import { formatPrice } from "@/lib/products";
 
@@ -22,6 +22,7 @@ type OpenpayGlobal = {
   setId: (merchantId: string) => void;
   setApiKey: (publicKey: string) => void;
   setSandboxMode: (enabled: boolean) => void;
+  getSandboxMode?: () => boolean;
   token: {
     create: (
       cardData: {
@@ -54,6 +55,13 @@ type ChargeResponse = {
   requestId?: string | null;
 };
 
+class OpenpayCheckoutError extends Error {
+  constructor(message: string, options?: ErrorOptions) {
+    super(message, options);
+    this.name = "OpenpayCheckoutError";
+  }
+}
+
 declare global {
   interface Window {
     OpenPay?: OpenpayGlobal;
@@ -65,10 +73,24 @@ const openpayPublicKey = process.env.NEXT_PUBLIC_OPENPAY_PUBLIC_KEY ?? "";
 const checkoutFormId = "camhe-openpay-payment-form";
 const deviceSessionFieldName = "device_session_id";
 const pendingChargeStorageKey = "camhe-openpay-pending-charge";
-const openpayScriptUrls = [
-  "https://ajax.googleapis.com/ajax/libs/jquery/1.11.0/jquery.min.js",
-  "https://resources.openpay.mx/lib/openpay-js/1.2.39/openpay.v1.min.js",
-  "https://resources.openpay.mx/lib/openpay-data-js/1.2.38/openpay-data.v1.min.js"
+const checkoutTimeoutMs = 20000;
+const openpayScriptGroups = [
+  {
+    name: "jQuery",
+    urls: ["https://ajax.googleapis.com/ajax/libs/jquery/1.11.0/jquery.min.js"]
+  },
+  {
+    name: "Openpay.js",
+    urls: ["https://resources.openpay.mx/lib/openpay-js/1.2.39/openpay.v1.min.js"]
+  },
+  {
+    name: "Openpay device data",
+    urls: [
+      "https://resources.openpay.mx/lib/openpay-js/1.2.39/openpay-data.v1.min.js",
+      "https://resources.openpay.mx/lib/openpay-data-js/1.2.38/openpay-data.v1.min.js",
+      "https://openpay.s3.amazonaws.com/openpay-data.v1.min.js"
+    ]
+  }
 ];
 
 const openpayClientConfig = {
@@ -133,7 +155,7 @@ function loadScript(src: string) {
       script.dataset.loaded = "true";
       resolve();
     };
-    script.onerror = () => reject(new Error(`No se pudo cargar ${src}`));
+    script.onerror = () => reject(new OpenpayCheckoutError(`Fallo carga del script: ${src}`));
 
     if (!existing) {
       document.head.appendChild(script);
@@ -141,10 +163,27 @@ function loadScript(src: string) {
   });
 }
 
+async function loadScriptGroup(name: string, urls: string[]) {
+  const errors: string[] = [];
+
+  for (const url of urls) {
+    try {
+      await loadScript(url);
+      console.log(`Openpay script cargado: ${name}`, url);
+      return;
+    } catch (error) {
+      console.error("Openpay checkout error", error);
+      errors.push(error instanceof Error ? error.message : String(error));
+    }
+  }
+
+  throw new OpenpayCheckoutError(`Fallo carga del script ${name}: ${errors.join(" | ")}`);
+}
+
 function loadOpenpay() {
   if (!openpayLoader) {
-    openpayLoader = openpayScriptUrls.reduce(
-      (chain, src) => chain.then(() => loadScript(src)),
+    openpayLoader = openpayScriptGroups.reduce(
+      (chain, group) => chain.then(() => loadScriptGroup(group.name, group.urls)),
       Promise.resolve()
     );
   }
@@ -153,26 +192,86 @@ function loadOpenpay() {
 }
 
 function configureOpenpay() {
-  if (!openpayClientConfig.merchantId || !openpayClientConfig.publicKey) {
-    throw new Error("Faltan credenciales publicas de Openpay.");
-  }
+  console.log("window.OpenPay", window.OpenPay);
+  console.log("merchant", process.env.NEXT_PUBLIC_OPENPAY_MERCHANT_ID);
+  console.log("public", process.env.NEXT_PUBLIC_OPENPAY_PUBLIC_KEY);
 
   if (!window.OpenPay) {
-    throw new Error("Openpay JS no esta disponible.");
+    throw new OpenpayCheckoutError("Fallo Openpay.js: window.OpenPay no existe despues de cargar el script.");
   }
 
-  window.OpenPay.setId(openpayClientConfig.merchantId);
-  window.OpenPay.setApiKey(openpayClientConfig.publicKey);
-  window.OpenPay.setSandboxMode(true);
+  if (!openpayClientConfig.merchantId) {
+    throw new OpenpayCheckoutError("Fallo merchant: NEXT_PUBLIC_OPENPAY_MERCHANT_ID esta ausente.");
+  }
+
+  if (!openpayClientConfig.publicKey) {
+    throw new OpenpayCheckoutError("Fallo api key: NEXT_PUBLIC_OPENPAY_PUBLIC_KEY esta ausente.");
+  }
+
+  try {
+    window.OpenPay.setId(openpayClientConfig.merchantId);
+    console.log("OpenPay.setId OK");
+  } catch (error) {
+    throw new OpenpayCheckoutError("Fallo merchant: OpenPay.setId no pudo inicializarse.", {
+      cause: error
+    });
+  }
+
+  try {
+    window.OpenPay.setApiKey(openpayClientConfig.publicKey);
+    console.log("OpenPay.setApiKey OK");
+  } catch (error) {
+    throw new OpenpayCheckoutError("Fallo api key: OpenPay.setApiKey no pudo inicializarse.", {
+      cause: error
+    });
+  }
+
+  try {
+    window.OpenPay.setSandboxMode(true);
+    if (window.OpenPay.getSandboxMode && window.OpenPay.getSandboxMode() !== true) {
+      throw new Error("OpenPay.getSandboxMode no regreso true.");
+    }
+    console.log("OpenPay.setSandboxMode OK");
+  } catch (error) {
+    throw new OpenpayCheckoutError("Fallo sandbox: OpenPay.setSandboxMode(true) no pudo inicializarse.", {
+      cause: error
+    });
+  }
 }
 
 function getOpenpayError(response: OpenpayTokenResponse) {
   return response.data?.description ?? response.message ?? "Error de validacion de tarjeta.";
 }
 
+function getCheckoutErrorMessage(error: unknown) {
+  if (error instanceof DOMException && error.name === "AbortError") {
+    return "La operacion tardo mas de lo esperado. Intenta nuevamente.";
+  }
+
+  if (error instanceof Error) {
+    return error.message;
+  }
+
+  return "No fue posible procesar el pago. Intenta nuevamente.";
+}
+
+function withCheckoutTimeout<T>(operation: (signal: AbortSignal) => Promise<T>) {
+  const controller = new AbortController();
+  let timeoutId: number | undefined;
+  const timeout = new Promise<never>((_, reject) => {
+    timeoutId = window.setTimeout(() => {
+      controller.abort();
+      reject(new DOMException("Checkout timeout", "AbortError"));
+    }, checkoutTimeoutMs);
+  });
+
+  return Promise.race([operation(controller.signal), timeout]).finally(() => {
+    if (timeoutId) window.clearTimeout(timeoutId);
+  });
+}
+
 export function CheckoutView() {
-  const { detailedItems, subtotal, clearCart } = useCart();
-  const [sent, setSent] = useState(false);
+  const { detailedItems, subtotal } = useCart();
   const [paymentError, setPaymentError] = useState("");
   const [paymentNotice, setPaymentNotice] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -197,9 +296,10 @@ export function CheckoutView() {
       if (mounted) setOpenpayReady(true);
     }
 
-    initializeOpenpay().catch(() => {
+    initializeOpenpay().catch((error) => {
+      console.error("Openpay checkout error", error);
       if (mounted) {
-        setPaymentError("Error de validacion: no fue posible inicializar Openpay.");
+        setPaymentError(getCheckoutErrorMessage(error));
       }
     });
 
@@ -268,7 +368,7 @@ export function CheckoutView() {
 
           reject(new Error("Error de validacion: Openpay no devolvio token de tarjeta."));
         },
-        (response) => reject(new Error(`Error de validacion: ${getOpenpayError(response)}`))
+        (response) => reject(new OpenpayCheckoutError(`Tokenizacion fallida: ${getOpenpayError(response)}`))
       );
     });
   }
@@ -276,15 +376,22 @@ export function CheckoutView() {
   function createDeviceSessionId() {
     configureOpenpay();
 
+    if (!window.OpenPay?.deviceData?.setup) {
+      throw new OpenpayCheckoutError(
+        "Fallo device_session_id: OpenPay.deviceData.setup no esta disponible."
+      );
+    }
+
     const deviceSessionId = window.OpenPay?.deviceData.setup(
       checkoutFormId,
       deviceSessionFieldName
     );
 
     if (!deviceSessionId) {
-      throw new Error("Error de validacion: no fue posible generar deviceSessionId.");
+      throw new OpenpayCheckoutError("No fue posible generar device_session_id.");
     }
 
+    console.log("OpenPay.deviceData.setup OK");
     return deviceSessionId;
   }
 
@@ -299,46 +406,60 @@ export function CheckoutView() {
       return;
     }
 
-    if (!openpayReady) {
-      setPaymentError("Error de validacion: Openpay aun no esta listo. Intenta de nuevo.");
-      return;
-    }
-
     setIsSubmitting(true);
+    let shouldResetLoading = true;
 
     try {
-      const formData = new FormData(event.currentTarget);
-      const deviceSessionId = createDeviceSessionId();
-      const tokenId = await createCardToken();
+      const data = await withCheckoutTimeout(async (signal) => {
+        const formData = new FormData(event.currentTarget);
+        await loadOpenpay();
+        configureOpenpay();
+        setOpenpayReady(true);
+        const deviceSessionId = createDeviceSessionId();
+        const tokenId = await createCardToken();
 
-      const response = await fetch("/api/openpay/create-charge", {
-        method: "POST",
-        headers: {
-          Accept: "application/json",
-          "Content-Type": "application/json"
-        },
-        body: JSON.stringify({
-          orderId,
-          amount: subtotal,
-          token_id: tokenId,
-          device_session_id: deviceSessionId,
-          customer: {
-            name: String(formData.get("name") ?? "").trim(),
-            email: String(formData.get("email") ?? "").trim(),
-            phone: String(formData.get("phone") ?? "").trim()
+        const response = await fetch("/api/openpay/create-charge", {
+          method: "POST",
+          headers: {
+            Accept: "application/json",
+            "Content-Type": "application/json"
           },
-          items: detailedItems.map((item) => ({
-            id: item.productId,
-            name: item.product.name,
-            quantity: item.quantity,
-            unitPrice: item.product.price
-          }))
-        })
-      });
-      const data = (await response.json()) as ChargeResponse;
+          body: JSON.stringify({
+            orderId,
+            amount: subtotal,
+            token_id: tokenId,
+            device_session_id: deviceSessionId,
+            customer: {
+              name: String(formData.get("name") ?? "").trim(),
+              email: String(formData.get("email") ?? "").trim(),
+              phone: String(formData.get("phone") ?? "").trim()
+            },
+            items: detailedItems.map((item) => ({
+              id: item.productId,
+              name: item.product.name,
+              quantity: item.quantity,
+              unitPrice: item.product.price
+            }))
+          }),
+          signal
+        });
+        const chargeData = (await response.json().catch(() => null)) as ChargeResponse | null;
 
-      if (!response.ok) {
-        setPaymentError(data.error ?? "No fue posible procesar el pago.");
+        if (!response.ok) {
+          throw new OpenpayCheckoutError(
+            chargeData?.error ?? "No fue posible procesar el pago con Openpay."
+          );
+        }
+
+        if (!chargeData) {
+          throw new OpenpayCheckoutError("Respuesta invalida de Openpay.");
+        }
+
+        return chargeData;
+      });
+
+      if (!data.redirectUrl) {
+        setPaymentError("No se pudo iniciar la autenticacion 3D Secure. Intenta nuevamente.");
         if (data.errorCode || data.requestId) {
           setPaymentNotice(
             [
@@ -352,44 +473,27 @@ export function CheckoutView() {
         return;
       }
 
-      if (data.redirectUrl) {
-        if (data.transactionId) {
-          window.sessionStorage.setItem(
-            pendingChargeStorageKey,
-            JSON.stringify({ transactionId: data.transactionId, orderId })
-          );
-        }
-        setPaymentNotice("Pago en validacion. Te redirigiremos a la confirmacion bancaria.");
-        window.location.assign(data.redirectUrl);
-        return;
+      if (data.transactionId) {
+        window.sessionStorage.setItem(
+          pendingChargeStorageKey,
+          JSON.stringify({ transactionId: data.transactionId, orderId })
+        );
       }
-
-      if (data.approved) {
-        setPaymentNotice(data.message ?? "Pago aprobado.");
-        clearCart();
-        setSent(true);
-        return;
-      }
-
-      if (data.rejected) {
-        setPaymentError(data.message ?? "Pago rechazado.");
-        return;
-      }
-
-      setPaymentNotice(data.message ?? "Pago en validacion.");
+      shouldResetLoading = false;
+      setPaymentNotice("Pago en validacion. Te redirigiremos a la confirmacion bancaria.");
+      window.location.href = data.redirectUrl;
     } catch (error) {
-      setPaymentError(
-        error instanceof Error
-          ? error.message
-          : "Error de validacion: revisa los datos de pago e intenta nuevamente."
-      );
+      console.error("Openpay checkout error", error);
+      setPaymentError(getCheckoutErrorMessage(error));
       return;
     } finally {
-      setIsSubmitting(false);
+      if (shouldResetLoading) {
+        setIsSubmitting(false);
+      }
     }
   }
 
-  if (detailedItems.length === 0 && !sent) {
+  if (detailedItems.length === 0) {
     return (
       <section className="container-page py-20">
         <div className="mx-auto max-w-2xl border border-black/10 bg-camhe-light p-8 text-center shadow-sm">
@@ -400,27 +504,6 @@ export function CheckoutView() {
             href="/catalogo"
           >
             Ver catalogo
-          </Link>
-        </div>
-      </section>
-    );
-  }
-
-  if (sent) {
-    return (
-      <section className="container-page py-20">
-        <div className="mx-auto max-w-2xl border border-black/10 bg-camhe-light p-8 text-center shadow-sm">
-          <ShieldCheck className="mx-auto text-camhe-red" size={44} />
-          <h1 className="mt-4 text-3xl font-black text-camhe-black">Pago aprobado</h1>
-          <p className="mt-3 text-camhe-steel">
-            Tu pago fue aprobado para la orden {orderId}. CAMHE confirmara disponibilidad
-            y coordinara la entrega.
-          </p>
-          <Link
-            className="focus-ring mt-6 inline-flex rounded-sm bg-camhe-black px-6 py-3 font-black text-white"
-            href="/catalogo"
-          >
-            Seguir comprando
           </Link>
         </div>
       </section>

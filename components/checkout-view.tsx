@@ -248,15 +248,12 @@ function getOpenpayError(response: OpenpayTokenResponse) {
 }
 
 function getCheckoutErrorMessage(error: unknown) {
-  if (error instanceof DOMException && error.name === "AbortError") {
-    return "La operacion tardo mas de lo esperado. Intenta nuevamente.";
-  }
+  void error;
+  return "Transacción fallida.";
+}
 
-  if (error instanceof Error) {
-    return error.message;
-  }
-
-  return "No fue posible procesar el pago. Intenta nuevamente.";
+function getValidationErrorMessage() {
+  return "Transacción fallida.";
 }
 
 function withCheckoutTimeout<T>(operation: (signal: AbortSignal) => Promise<T>) {
@@ -404,7 +401,7 @@ export function CheckoutView() {
 
     const validationMessage = validateCard();
     if (validationMessage) {
-      setPaymentError(`Error de validacion: ${validationMessage}`);
+      setPaymentError(getValidationErrorMessage());
       return;
     }
 
@@ -462,17 +459,7 @@ export function CheckoutView() {
       const redirectUrl = data.payment_method?.url ?? data.redirectUrl;
 
       if (!redirectUrl) {
-        setPaymentError("No se pudo iniciar la autenticacion 3D Secure. Intenta nuevamente.");
-        if (data.errorCode || data.requestId) {
-          setPaymentNotice(
-            [
-              data.errorCode ? `Codigo Openpay: ${data.errorCode}` : "",
-              data.requestId ? `Solicitud: ${data.requestId}` : ""
-            ]
-              .filter(Boolean)
-              .join(" - ")
-          );
-        }
+        setPaymentError("Transacción fallida.");
         return;
       }
 
@@ -483,7 +470,7 @@ export function CheckoutView() {
         );
       }
       shouldResetLoading = false;
-      setPaymentNotice("Pago en validacion. Te redirigiremos a la confirmacion bancaria.");
+      setPaymentNotice("Pago pendiente.");
       window.location.href = redirectUrl;
     } catch (error) {
       console.error("Openpay checkout error", error);

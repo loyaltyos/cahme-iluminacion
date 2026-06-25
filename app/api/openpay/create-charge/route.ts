@@ -48,15 +48,15 @@ export async function POST(request: Request) {
   const payload = (await request.json().catch(() => null)) as CreateChargeBody | null;
 
   if (!payload || !isValidPayload(payload)) {
-    return NextResponse.json({ error: "Pedido invalido." }, { status: 400 });
+    return NextResponse.json({ error: "Transacción fallida." }, { status: 400 });
   }
 
   if (!payload.token_id || !payload.device_session_id) {
-    return NextResponse.json({ error: "Datos de pago incompletos." }, { status: 400 });
+    return NextResponse.json({ error: "Transacción fallida." }, { status: 400 });
   }
 
   if (!hasOpenpayServerCredentials()) {
-    return NextResponse.json({ error: "Servicio de pago no disponible." }, { status: 503 });
+    return NextResponse.json({ error: "Transacción fallida." }, { status: 503 });
   }
 
   const config = getOpenpayConfig();
@@ -93,7 +93,7 @@ export async function POST(request: Request) {
 
       return NextResponse.json(
         {
-          error: error.message,
+          error: "Transacción fallida.",
           category: error.details?.category ?? null,
           errorCode: error.details?.error_code ?? null,
           requestId: error.details?.request_id ?? null
@@ -103,7 +103,7 @@ export async function POST(request: Request) {
     }
 
     return NextResponse.json(
-      { error: "No fue posible procesar el pago con Openpay." },
+      { error: "Transacción fallida." },
       { status: 500 }
     );
   }

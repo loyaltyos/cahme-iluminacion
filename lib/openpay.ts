@@ -139,12 +139,11 @@ export async function getOpenpayCharge(
 }
 
 export function getOpenpayPaymentMessage(status: string, errorMessage?: string) {
+  void errorMessage;
   const normalizedStatus = status.toLowerCase();
 
   if (normalizedStatus === "completed") return "Pago aprobado.";
-  if (normalizedStatus === "failed") return errorMessage ? `Pago rechazado: ${errorMessage}` : "Pago rechazado.";
-  if (normalizedStatus === "cancelled") return "Pago rechazado: la autenticacion fue cancelada.";
-  if (normalizedStatus === "refunded") return "Pago reembolsado.";
+  if (["failed", "cancelled", "refunded"].includes(normalizedStatus)) return "Transacción fallida.";
   return "Pago pendiente.";
 }
 

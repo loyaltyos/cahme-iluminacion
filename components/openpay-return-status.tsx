@@ -32,12 +32,19 @@ function readPendingCharge() {
 }
 
 function getStatusTitle(data: VerificationResponse | null, loading: boolean) {
-  if (loading) return "Pago pendiente";
-  if (!data) return "Pago pendiente";
-  if (data.approved) return "Pago aprobado";
-  if (data.rejected) return "Pago rechazado";
-  if (data.refunded) return "Pago reembolsado";
-  return "Pago pendiente";
+  if (loading) return "Pago pendiente.";
+  if (!data) return "Pago pendiente.";
+  if (data.approved) return "Pago aprobado.";
+  if (data.rejected || data.refunded) return "Transacción fallida.";
+  return "Pago pendiente.";
+}
+
+function getStatusMessage(data: VerificationResponse | null, loading: boolean) {
+  if (loading) return "Pago pendiente.";
+  if (!data) return "Pago pendiente.";
+  if (data.approved) return "Pago aprobado.";
+  if (data.rejected || data.refunded) return "Transacción fallida.";
+  return "Pago pendiente.";
 }
 
 export function OpenpayReturnStatus() {
@@ -63,7 +70,7 @@ export function OpenpayReturnStatus() {
       if (!transactionId) {
         setData({
           pending: true,
-          message: "Pago pendiente. No se recibio una referencia de Openpay para verificar el cargo."
+          message: "Pago pendiente."
         });
         setLoading(false);
         return;
@@ -83,7 +90,7 @@ export function OpenpayReturnStatus() {
             ? result
             : {
                 rejected: true,
-                message: result.error ?? "No fue posible consultar el cargo en Openpay."
+                message: "Transacción fallida."
               }
         );
 
@@ -93,8 +100,8 @@ export function OpenpayReturnStatus() {
       } catch {
         if (!mounted) return;
         setData({
-          pending: true,
-          message: "Pago pendiente. No fue posible consultar Openpay en este momento."
+          rejected: true,
+          message: "Transacción fallida."
         });
       } finally {
         if (mounted) setLoading(false);
@@ -114,9 +121,7 @@ export function OpenpayReturnStatus() {
         {getStatusTitle(data, loading)}
       </h1>
       <p className="mt-3 leading-7 text-camhe-steel">
-        {loading
-          ? "Estamos consultando Openpay para confirmar el resultado de la transaccion."
-          : data?.message ?? "Pago pendiente. Te notificaremos cuando Openpay confirme el resultado."}
+        {getStatusMessage(data, loading)}
       </p>
       {data?.transactionId && (
         <p className="mt-3 text-xs font-bold uppercase tracking-[0.12em] text-camhe-steel">

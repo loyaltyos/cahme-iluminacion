@@ -17,9 +17,9 @@ export default function ThreeDsReturnPage() {
         <Suspense
           fallback={
             <>
-              <h1 className="mt-4 text-3xl font-black text-camhe-black">Pago pendiente</h1>
+              <h1 className="mt-4 text-3xl font-black text-camhe-black">Pago pendiente.</h1>
               <p className="mt-3 leading-7 text-camhe-steel">
-                Estamos consultando Openpay para confirmar el resultado de la transaccion.
+                Pago pendiente.
               </p>
             </>
           }

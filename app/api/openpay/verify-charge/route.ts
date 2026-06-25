@@ -26,11 +26,11 @@ function toVerificationResponse(charge: Awaited<ReturnType<typeof getOpenpayChar
 
 async function verifyCharge(transactionId: string) {
   if (!transactionId) {
-    return NextResponse.json({ error: "Referencia de cargo invalida." }, { status: 400 });
+    return NextResponse.json({ error: "Transacción fallida." }, { status: 400 });
   }
 
   if (!hasOpenpayServerCredentials()) {
-    return NextResponse.json({ error: "Servicio de pago no disponible." }, { status: 503 });
+    return NextResponse.json({ error: "Transacción fallida." }, { status: 503 });
   }
 
   try {
@@ -40,7 +40,7 @@ async function verifyCharge(transactionId: string) {
     if (error instanceof OpenpayChargeError) {
       return NextResponse.json(
         {
-          error: error.message,
+          error: "Transacción fallida.",
           category: error.details?.category ?? null,
           errorCode: error.details?.error_code ?? null,
           requestId: error.details?.request_id ?? null
@@ -49,7 +49,7 @@ async function verifyCharge(transactionId: string) {
       );
     }
 
-    return NextResponse.json({ error: "No fue posible consultar el cargo en Openpay." }, { status: 500 });
+    return NextResponse.json({ error: "Transacción fallida." }, { status: 500 });
   }
 }
 

@@ -47,6 +47,10 @@ type ChargeResponse = {
   rejected?: boolean;
   message?: string;
   redirectUrl?: string | null;
+  payment_method?: {
+    type?: string;
+    url?: string | null;
+  };
   transactionId?: string;
   error?: string;
   detail?: string;
@@ -455,7 +459,9 @@ export function CheckoutView() {
         return chargeData;
       });
 
-      if (!data.redirectUrl) {
+      const redirectUrl = data.payment_method?.url ?? data.redirectUrl;
+
+      if (!redirectUrl) {
         setPaymentError("No se pudo iniciar la autenticacion 3D Secure. Intenta nuevamente.");
         if (data.errorCode || data.requestId) {
           setPaymentNotice(
@@ -478,7 +484,7 @@ export function CheckoutView() {
       }
       shouldResetLoading = false;
       setPaymentNotice("Pago en validacion. Te redirigiremos a la confirmacion bancaria.");
-      window.location.href = data.redirectUrl;
+      window.location.href = redirectUrl;
     } catch (error) {
       console.error("Openpay checkout error", error);
       setPaymentError(getCheckoutErrorMessage(error));

@@ -83,6 +83,7 @@ export async function POST(request: Request) {
       authorization: charge.authorization ?? null,
       orderId: charge.order_id ?? payload.orderId,
       amount: charge.amount,
+      payment_method: charge.payment_method ?? null,
       redirectUrl: redirectTo ?? null,
       message: getOpenpayPaymentMessage(charge.status, charge.error_message)
     });
